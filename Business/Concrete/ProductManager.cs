@@ -17,6 +17,8 @@ using System.Threading.Tasks;
 using ValidationException = FluentValidation.ValidationException;
 using Core.CrossCuttingConcerns.Validation;
 using Core.Aspects.Autofac.Validation;
+using Business.CCS;
+using Microsoft.Extensions.Logging;
 
 namespace Business.Concrete
 {
@@ -29,13 +31,20 @@ namespace Business.Concrete
             __productDal = productDal;
         }
 
-        [ValidationAspect(typeof(ProductValidator))]
+       [ValidationAspect(typeof(ProductValidator))]
         public IResult Add(Product product)
         {
-            
-            __productDal.Add(product);
 
-            return new SuccessResult(Messages.ProductAdded);
+            if (CheckIfProductCountOfCategoryCorrect(product.CategoryId).Success)
+            {
+                if (CheckIfProductNameExists(product.ProductName).Success)
+                {
+                    __productDal.Add(product);
+
+                    return new SuccessResult(Messages.ProductAdded);
+                }
+            }
+            return new ErrorResult();
         }
 
         public IDataResult<List<Product>> GetAll()
@@ -66,6 +75,37 @@ namespace Business.Concrete
         public IDataResult<List<ProductDetailDto>> GetProductDetails()
         {
             return new SuccessDataResult<List<ProductDetailDto>> (__productDal.GetProductDetails());
+        }
+
+        [ValidationAspect(typeof(ProductValidator))]
+        public IResult Update(Product product)
+        {
+            var result = __productDal.GetAll(p => p.CategoryId == product.CategoryId).Count;
+            if (result >= 10)
+            {
+                return new ErrorResult(Messages.ProductCountOfCategoryError);
+            }
+            throw new NotImplementedException();
+        }
+
+        private IResult CheckIfProductCountOfCategoryCorrect(int categoryId)
+        {
+            var result = __productDal.GetAll(p => p.CategoryId == categoryId).Count;
+            if (result >= 10)
+            {
+                return new ErrorResult(Messages.ProductCountOfCategoryError);
+            }
+            return new SuccessResult();
+        }
+
+        private IResult CheckIfProductNameExists(string productName)
+        {
+            var result = __productDal.GetAll(p => p.ProductName == productName).Any();
+            if (result)
+            {
+                return new ErrorResult(Messages.ProductNameAlreadyExists);
+            }
+            return new SuccessResult();
         }
     }
 }

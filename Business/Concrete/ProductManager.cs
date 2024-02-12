@@ -19,32 +19,34 @@ using Core.CrossCuttingConcerns.Validation;
 using Core.Aspects.Autofac.Validation;
 using Business.CCS;
 using Microsoft.Extensions.Logging;
+using Core.Utilities.Business;
 
 namespace Business.Concrete
 {
     public class ProductManager : IProductService
     {
         IProductDal __productDal;
+        ICategoryService __categoryService;
 
-        public ProductManager(IProductDal productDal)
+        public ProductManager(IProductDal productDal, ICategoryService categoryService)
         {
             __productDal = productDal;
+            __categoryService = categoryService;
         }
 
-       [ValidationAspect(typeof(ProductValidator))]
+            [ValidationAspect(typeof(ProductValidator))]
         public IResult Add(Product product)
         {
-
-            if (CheckIfProductCountOfCategoryCorrect(product.CategoryId).Success)
+            IResult result =BusinessRules.Run(CheckIfProductNameExists(product.ProductName), CheckIfProductCountOfCategoryCorrect(product.CategoryId), ChechkCategoryLimitExceded());
+            if(result != null)
             {
-                if (CheckIfProductNameExists(product.ProductName).Success)
-                {
-                    __productDal.Add(product);
-
-                    return new SuccessResult(Messages.ProductAdded);
-                }
+                return result;
             }
-            return new ErrorResult();
+            __productDal.Add(product);
+
+            return new SuccessResult(Messages.ProductAdded);
+
+            
         }
 
         public IDataResult<List<Product>> GetAll()
@@ -104,6 +106,16 @@ namespace Business.Concrete
             if (result)
             {
                 return new ErrorResult(Messages.ProductNameAlreadyExists);
+            }
+            return new SuccessResult();
+        }
+
+        private IResult ChechkCategoryLimitExceded()
+        {
+            var result = __categoryService.GetAll();
+            if(result.Data.Count > 15)
+            {
+                return new ErrorResult(Messages.CategoryLimitExceded);
             }
             return new SuccessResult();
         }

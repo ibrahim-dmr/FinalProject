@@ -17,5 +17,6 @@ namespace Business.Constants
         internal static string ProductNameAlreadyExists="Bu isimde zaten başka bir ürün var";
         internal static string CategoryLimitExceded="Kategori limiti aşıldığı için yeni ürün eklenemiyor";
         internal static string? AuthorizationDenied="Yetkiniz yok.";
+        public static string AccessTokenCreated = "Access token başarıyla oluşturuldu";
     }
 }
